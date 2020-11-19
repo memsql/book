@@ -1,0 +1,13 @@
+Reading and writing variables, dump cluster variables
+Time zones
+Concurrency, MVCC, locking
+Memory model
+Analyze and table statistics (you still need to analyze to invalidate the plan)
+Why indexes aren't being uses? Collation mismatch or scanning entire table.
+Cluster maintenace
+Cluster expansion
+
+    stats
+    plancaching
+    load balancing
+    general knowledge of types of keys and how they can be used in MemSQL

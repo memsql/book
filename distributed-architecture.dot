@@ -1,0 +1,17 @@
+digraph {
+  Client-> Aggregator [label=" SQL  "];
+  Aggregator -> Client [label=" Results"];
+
+  subgraph {
+    leaf_1 [label="Leaf 1"];
+    leaf_2 [label="Leaf 2"];
+    leaf_3 [label="Leaf 3"];
+    leaf_4 [label="Leaf 4"];
+    { rank=same; leaf_1, leaf_2, leaf_3, leaf_4 }
+  }
+
+  Aggregator -> leaf_1 [dir=both];
+  Aggregator -> leaf_2 [dir=both];
+  Aggregator -> leaf_3 [dir=both];
+  Aggregator -> leaf_4 [dir=both];
+}
