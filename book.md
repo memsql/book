@@ -1,4 +1,4 @@
-% The Little SingleStore Book
+% The Little SingleStore Book v7.1
 % Albert Vernon
 % November 2020
 
@@ -16,8 +16,8 @@ In this chapter, I introduce the SingleStore DB product, describe how it works, 
 
 Our customers love SingleStore DB becasue of the three S's, which are speed, scale, and SQL.
 
-* **Speed:** because of its distributed architecture, query compilation, and massive parallelism, SingleStore DB can give 10X or better performance at $\frac{1}{3}$ the cost compared to other database systems.
-* **Scale:** it is easy to add more nodes to increase storage or computational capacity to your SingleStore DB cluster with a few commands.
+* **Speed:** because of its distributed architecture, query compilation, and massive parallelism, SingleStore DB can give better performance at a fraction of the cost of other database systems.
+* **Scale:** with a few commands you can add nodes to your SingleStore DB cluster to increase storage or computational capacity.
 * **SQL:** SingleStore DB uses the query language that your database developers already know. It is also compatible with the MySQL wire protocol, so it is often possible to reuse applications, tools, and drivers.
 
 ## Aggregators and Leaves
@@ -45,7 +45,7 @@ A database partition is a container that holds a subset of the rows of the table
 When you create a database, you can specify how many partitions it has like this:
 
 ```sql
-create database mycompany partitions=8
+create database mycompany partitions = 6
 ```
 
 If you omit the `partitions` clause, then SingleStore DB creates your database with the default number of partitions. The number of database partitions has performance implications, especially for concurrency. I discuss this in the Query Tuning chapter.
@@ -61,7 +61,7 @@ When you create a table in SingleStore DB, you can specify one or more columns t
 
 As you insert data into a table, the aggregator calculates where to store each row using its shard key value. This calculation is repeatable, which means two rows with the same shard key value always go to the same partition, even if the rows belong to different tables. This has performance implications when joining tables, which I discuss in the Query Tuning chapter.
 
-If you specify a multi-column shard key, the aggregator concatenates the values of the shard key columns and then does the calculation. As an example, consider this scenario:
+If you specify a multi-column shard key, the aggregator concatenates the values of the shard key columns and then does the calculation. Consider this example:
 
 ```sql
 create table employees (
@@ -69,7 +69,7 @@ create table employees (
   last_name text,
   shard key (last_name, first_name));
 
-insert into employees values ('John', 'Smith);
+insert into employees values ('John', 'Smith');
 ```
 
 Because `employees` has a compound shard key, the shard key value for the row is `'SmithJohn'`. Notice that the order of the columns in the `shard key` clause is significant.
@@ -83,4 +83,75 @@ When you create a table, the following scenarios are possible:
 After you create a table, you cannot alter the shard key. If you change your mind, you have these options:
 
 * Back up the table, drop the table, then re-create it with a different shard key.
-* Create at new table with a different shard key then copy the data with a statement to this: `insert into _____ select * from _____`
+* Create a new table with a different shard key then copy the data with a statement like this: `insert into _____ select * from _____`
+
+Consider this example that makes tables named `foo` and `bar` and inserts sample data:
+
+```sql
+create database testdb partitions = 6;
+use testdb;
+
+create table foo (
+  a int,
+  b int,
+  c int,
+  shard key (b));
+
+create table bar (
+  x int,
+  y int,
+  z int,
+  shard key (x));
+
+insert into foo values (4, 5, 6);
+insert into bar values (5, 7, 8);
+```
+
+The shard key value of the row in `foo` is `5`, so partition #2 stores this row^[If you try this example in your cluster, you might get a different `partition_id()`.]:
+
+```console
+memsql [testdb]> select *, partition_id() from foo;
++------+------+------+----------------+
+| a    | b    | c    | partition_id() |
++------+------+------+----------------+
+|    4 |    5 |    6 |              2 |
++------+------+------+----------------+
+```
+
+Here is an illustration of what happened:
+
+![](shard-example-1)
+
+The shard key value of the row in `bar` is also `5`, so partition #2 stores this row in addition to the row in `foo`:
+
+```console
+memsql [testdb]> select *, partition_id() from bar;
++------+------+------+----------------+
+| x    | y    | z    | partition_id() |
++------+------+------+----------------+
+|    5 |    7 |    8 |              2 |
++------+------+------+----------------+
+```
+
+![](shard-example-2)
+
+Notice that the same partition stores both rows even though the rows are in different tables and the shard key columns have different names. The shard key value of a row is the only determinant of which partition stores the row.
+
+Lastly, if we insert into `foo` with a different shard key value, partition #4 stores this row:
+
+```console
+memsql [testdb]> insert into foo values (1, 10, 9);
+memsql [testdb]> select *, partition_id() from foo;
++------+------+------+----------------+
+| a    | b    | c    | partition_id() |
++------+------+------+----------------+
+|    4 |    5 |    6 |              2 |
+|    1 |   10 |    9 |              4 |
++------+------+------+----------------+
+```
+
+![](shard-example-3)
+
+Rows with different shard key values are usually in different partitions. This has performance implications when joining tables, which I discuss in the Query Tuning chapter.
+
+### Data Skew
