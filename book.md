@@ -1,6 +1,6 @@
 % The Little SingleStore Book v7.1
 % Albert Vernon
-% November 2020
+% Version %VERSION%, December 2020
 
 # Preface {-}
 
@@ -155,3 +155,15 @@ memsql [testdb]> select *, partition_id() from foo;
 Rows with different shard key values are usually in different partitions. This has performance implications when joining tables, which I discuss in the Query Tuning chapter.
 
 ### Data Skew
+
+One consideration when choosing a shard key is to spread the rows of your table evenly among your partitions. In other words, you want to pick a shard key that gives a uniform data distrbution. If you pick a bad shard key, it could cause data skew, which is when a partition holds an unbalanced amount of data. If the imbalance is large, then the leaf responsible for the partition has to do extra work, which might slow down your queries. In addition, data skew can exhaust the storage of a leaf with an unbalanced partition. The section "Detecting and Resolving Data Skew"^[https://docs.singlestore.com/v7.1/guides/use-memsql/physical-schema-design/detecting-and-resolving-data-skew/detecting-and-resolving-data-skew] in the SingleStore DB documentation describes how to detect data skew.
+
+Columns with few or no repeating values are good shard keys because they result in uniform data distribution, for example, serial numbers and ID numbers. Columns with repeating values, such as names, are poor shard keys since they are prone to data skew.
+
+Data skew below 10% is usually acceptable, but you should investigate if you detect skew above that threshold.
+
+In this example, partition #1 has twice as much data as the other partitions. This system operator would want to investigate why and possibly change the shard key of responsible table.
+
+![Data skew](data-skew)
+
+The other consideration when selecting a shard key is performance, especially for concurrency and when joining tables, which I discuss in the Query Tuning chapter.
