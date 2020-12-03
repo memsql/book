@@ -1,6 +1,6 @@
 % The Little SingleStore Book v7.1
 % Albert Vernon
-% Version %VERSION%, December 2020
+% %VERSION%
 
 # Preface {-}
 
